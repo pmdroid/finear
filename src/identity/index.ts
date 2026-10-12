@@ -13,6 +13,7 @@ import type { ResetOwner, Runtime } from "../core/runtime";
 import type { HttpHandler } from "../server";
 import { createAppUser } from "../workspace/directory";
 import { fixtureIds } from "../workspace/fixtures";
+import { renderConsent } from "./consent";
 import { authenticateFixture } from "./fixture";
 import { fixtureOAuthClients } from "./fixtures";
 export { identityMigrations } from "./schema";
@@ -359,14 +360,6 @@ function parameters(form: URLSearchParams): URLSearchParams {
   return form;
 }
 
-function html(value: string): string {
-  return value.replace(
-    /[&<>"']/g,
-    (character) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!,
-  );
-}
-
 function json(body: unknown, status = 200): Response {
   return Response.json(body, {
     status,
@@ -454,34 +447,36 @@ export function createIdentity(runtime: Runtime, options: IdentityOptions = {}):
         tx.now + oauthLifetimes.consent,
       ),
     );
-    const choices = Object.values(fixtureIds)
-      .map((ids) => {
-        const user = runtime.database
-          .query<{ name: string }>(
-            "SELECT name FROM users WHERE id = ? AND organization_id = ? AND app = 0",
-          )
-          .get(ids.user, ids.organization);
-        if (!user) return "";
-        const teams = runtime.database
-          .query<{ id: string; name: string }>(
-            "SELECT t.id, t.name FROM teams t JOIN team_memberships m ON m.team_id = t.id WHERE m.user_id = ? AND m.organization_id = ?",
-          )
-          .all(ids.user, ids.organization);
-        return `<form method="post" action="/oauth/authorize"><input type="hidden" name="consent" value="${html(nonce)}"><input type="hidden" name="user_id" value="${ids.user}"><input type="hidden" name="workspace_id" value="${ids.organization}"><h2>${html(user.name)} · ${ids.organization}</h2>${teams.map((team) => `<label><input type="checkbox" name="team_id" value="${team.id}" checked>${html(team.name)}</label>`).join("")}<button name="decision" value="allow">Authorize ${html(client.name)}</button><button name="decision" value="deny">Deny</button></form>`;
-      })
-      .join("");
-    return new Response(
-      `<!doctype html><html lang="en"><meta charset="utf-8"><title>Local OAuth consent</title><h1>Choose a fixture user and workspace</h1><p>${html(client.name)} requests ${html(form.get("scope")!)} as ${html(form.get("actor") ?? "user")}.</p>${choices}</html>`,
-      {
-        headers: {
-          "content-type": "text/html; charset=utf-8",
-          "cache-control": "no-store",
-          "content-security-policy":
-            "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
-          "referrer-policy": "no-referrer",
+    const choices = Object.values(fixtureIds).flatMap((ids) => {
+      const user = runtime.database
+        .query<{ name: string; workspace_name: string }>(
+          "SELECT u.name, o.name AS workspace_name FROM users u JOIN organizations o ON o.id = u.organization_id WHERE u.id = ? AND u.organization_id = ? AND u.app = 0",
+        )
+        .get(ids.user, ids.organization);
+      if (!user) return [];
+      const teams = runtime.database
+        .query<{ id: string; name: string }>(
+          "SELECT t.id, t.name FROM teams t JOIN team_memberships m ON m.team_id = t.id WHERE m.user_id = ? AND m.organization_id = ?",
+        )
+        .all(ids.user, ids.organization);
+      return [
+        {
+          userId: ids.user,
+          userName: user.name,
+          workspaceId: ids.organization,
+          workspaceName: user.workspace_name,
+          teams,
         },
-      },
-    );
+      ];
+    });
+    return renderConsent({
+      clientName: client.name,
+      actor: form.get("actor") ?? "user",
+      scopes: form.get("scope")!.split(","),
+      nonce,
+      callbackUrl: new URL(form.get("redirect_uri")!),
+      choices,
+    });
   }
 
   function finishConsent(form: URLSearchParams): Response {
