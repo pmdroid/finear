@@ -92,6 +92,30 @@ export function graphQLError(error: unknown): GraphQLError {
     INVALID_INPUT: "invalid input",
     CONFLICT: "user error",
   };
+  if (error instanceof GraphQLError) {
+    let original: Error | undefined = error.originalError;
+    while (original instanceof GraphQLError && original.originalError)
+      original = original.originalError;
+    const publicError =
+      original instanceof DomainError ? graphQLError(original) : graphQLError(new Error());
+    const extensions = original || error.path ? publicError.extensions : { type: "graphql error" };
+    const message =
+      !error.path && original
+        ? `Invalid GraphQL input${original instanceof DomainError ? `: ${original.message}` : ""}`
+        : original || error.path
+          ? publicError.message
+          : error.message;
+    return new GraphQLError(message, {
+      nodes: error.nodes,
+      source: error.source,
+      positions: error.positions,
+      path: error.path,
+      extensions:
+        !error.path && original && !(original instanceof DomainError)
+          ? { code: "INVALID_INPUT", type: "invalid input" }
+          : extensions,
+    });
+  }
   return new GraphQLError(error instanceof DomainError ? error.message : "Internal server error", {
     extensions: {
       code: error instanceof DomainError ? error.code : "INTERNAL_ERROR",
@@ -122,17 +146,6 @@ export async function executeGraphQL(
   if (!result.errors) return result;
   return {
     ...result,
-    errors: result.errors.map((error) => {
-      const original = error.originalError;
-      if (!original) return error;
-      return new GraphQLError(
-        original instanceof DomainError ? original.message : "Internal server error",
-        {
-          nodes: error.nodes,
-          path: error.path,
-          extensions: graphQLError(original).extensions,
-        },
-      );
-    }),
+    errors: result.errors.map(graphQLError),
   };
 }

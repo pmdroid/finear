@@ -62,5 +62,201 @@
   {
     "name": "team_states",
     "sha256": "fd177c11f6a5edb89bedf1292b6d0f3ca1af600d33d8e9ba6abb620917ed43ef"
+  },
+  {
+    "name": "issue",
+    "sha256": "2223801b20eebd8d5ba6d368322c381ff32858798a1a3d4d17cd26b81f0776c5"
+  },
+  {
+    "name": "issues",
+    "sha256": "dacfab1068facb1ecc14d95ca66f2991b1b8727d3b5d3f377b8d3d745ee246fa"
+  },
+  {
+    "name": "createIssue",
+    "sha256": "a3ee30dc49cceae66e65d157d440fea2f8557bc1d597591ae71d9950c61047b7"
+  },
+  {
+    "name": "updateIssue",
+    "sha256": "8cdb7e16b033c86810fc38fa3553065fc20cfde7daac208b035364ddc23f7336"
+  },
+  {
+    "name": "deleteIssue",
+    "sha256": "df6dcaf4e3ad29a6d419deab327e7c34e451a80e67433fe4ae23c467c19bd422"
+  },
+  {
+    "name": "archiveIssue",
+    "sha256": "7d8357d19ddc9be3a000167fe2c9b3f4e6cef491885a83997f10ae1aff86d52f"
+  },
+  {
+    "name": "unarchiveIssue",
+    "sha256": "5e61a3338ce750e30d177586a547a8e9f3233ad0eb320aae3f7c4ae9eeb84a6a"
+  },
+  {
+    "name": "issue_children",
+    "sha256": "69adfe5990cb0ad78418fe8ae4b6427c3c168964da76271dbed8be83d2d8e216"
+  },
+  {
+    "name": "issue_relations",
+    "sha256": "536bd737a76b19f29ea143631c3651721383ca03f36605b4ee789e6169658945"
+  },
+  {
+    "name": "issue_inverseRelations",
+    "sha256": "9b1e6302e01bfa38aef30961897e4b5ec7e4dd4894f78b6a74dae47d8fddf976"
+  },
+  {
+    "name": "issueRelation",
+    "sha256": "c2fda1bfc22cdcec9af14722541fea41da3f7e925391a80fbecd346786715773"
+  },
+  {
+    "name": "issueRelations",
+    "sha256": "d844e52e958fdf80799fba12dd5ef44a44c3e532297e9e173c0ea6b091041baa"
+  },
+  {
+    "name": "createIssueRelation",
+    "sha256": "1cfe4eaffdc09f685bf187a20d963e0b229504065af0f6b5967471158f1b0b13"
+  },
+  {
+    "name": "updateIssueRelation",
+    "sha256": "cb33b73853de78d7045280f9f187279a39d8368a1925dca4db9084c20acc2d75"
+  },
+  {
+    "name": "deleteIssueRelation",
+    "sha256": "cfc3d8fa9ec78408d46eb69d177aaab23655bfd20477ed358a160ae1da6caf04"
+  },
+  {
+    "name": "team_issues",
+    "sha256": "756d5c04370416229e4bca9987f9269736d165795a7b4dd065d7a941e0154fb8"
+  },
+  {
+    "name": "viewer_assignedIssues",
+    "sha256": "742b6dad8c47c09698bc95abf358bbeb34dea525ba24fcac79807ec4c6e231aa"
+  },
+  {
+    "name": "viewer_delegatedIssues",
+    "sha256": "11add30cfb0b35b6630f7087cafe8db4dbc9babc2281cc257345cfc4ac95d715"
+  },
+  {
+    "name": "project",
+    "sha256": "f908b27499009864cea7578cebc921ee5929314243ad4f4a6edf07c6b16c630f"
+  },
+  {
+    "name": "projects",
+    "sha256": "62246c803d70d7f9904fb2df7131cc775b8812f6f540a0662ecc11671806d063"
+  },
+  {
+    "name": "createProject",
+    "sha256": "52a42c976f54258c2cdf48aa4451b28d5262ffb4ef2398548c8f3c778c31b96f"
+  },
+  {
+    "name": "updateProject",
+    "sha256": "94303492115bdf09ff1ddbbb087675dc54f891cf406d89418011f5e23b49db40"
+  },
+  {
+    "name": "deleteProject",
+    "sha256": "33bf304261da5e4ab62061adc56ee5d56b5c7255a3782cd0a73901586728d4b5"
+  },
+  {
+    "name": "archiveProject",
+    "sha256": "64082ec414bfdc410d011ed9bd85b8044f2c9b4cebaf468c872049d60bdfb713"
+  },
+  {
+    "name": "unarchiveProject",
+    "sha256": "f5133adf8d94f61688594d92f6bc851d077a75cf401fb0abb2b2acb882cbb877"
+  },
+  {
+    "name": "project_issues",
+    "sha256": "5bcbe666acc854b6fecf15028ab845685219dad147e88f4f27ca56a58e140f60"
+  },
+  {
+    "name": "project_teams",
+    "sha256": "d696ced26dced02cbe9c5d07b5de40f705aaa89e0ff057c2394caaae2a1f1908"
+  },
+  {
+    "name": "project_members",
+    "sha256": "565cf91f615d1519723c56cc3c91c0c2ae1050ae58c06171c4d2f09eb75033aa"
+  },
+  {
+    "name": "team_projects",
+    "sha256": "9a412ff301281d08c5ea902d814c060423c2eed6744f30ed31d0a2c6b25b9ec4"
+  },
+  {
+    "name": "comment",
+    "sha256": "3a8913555a75f8c7424d1b7ec1d421ede1f795d1bf3322c03c882dd945e3afef"
+  },
+  {
+    "name": "comments",
+    "sha256": "34d3ce676e10dc586a68fc616296cb4ae4a94499a82998d4c54dde61620b7b28"
+  },
+  {
+    "name": "createComment",
+    "sha256": "88c9de0c2ea300cdb3e9206b4b5ae95354524667891ad6579af4cdf30c2e096d"
+  },
+  {
+    "name": "updateComment",
+    "sha256": "4a17763b1a43397ff77c72b9fbcd75f0c8dc152928c2e2326f87ed23376c915a"
+  },
+  {
+    "name": "deleteComment",
+    "sha256": "0cd7e2f220b20a993cd7733ba082a9b45c399b290fc9fd6a1b6d57ec2c22f0a1"
+  },
+  {
+    "name": "issue_comments",
+    "sha256": "e0fd8c92136f048490691d86517bfa0851028cc694b76a339a798c3bc66c59d3"
+  },
+  {
+    "name": "webhook",
+    "sha256": "dff2b3a68cf7cb732ca99ad2a90e3c814b7e8592dde91eaa0d91698339167b61"
+  },
+  {
+    "name": "webhooks",
+    "sha256": "e62bf7732cf29267e9b28be17c65470f1581b4cc65cd1abe1b342d4c9d9d1160"
+  },
+  {
+    "name": "createWebhook",
+    "sha256": "a819de7ef7a16b03fe3f3349a7b4b82c61e0ecdbe8d07e187bcc61e19c09538d"
+  },
+  {
+    "name": "updateWebhook",
+    "sha256": "d68c8ad3c7509b3c852dc456fec332241c21fb318f5f50990285d49b29992dc7"
+  },
+  {
+    "name": "deleteWebhook",
+    "sha256": "fe0ca5c30600af6b86e8f33748606ce1b1cc385c9313f4186579211eb70e63bb"
+  },
+  {
+    "name": "agentSession",
+    "sha256": "a3583abe481e54b529973943d2e8e4b688b832feeeeb96b98b4a79eef99099da"
+  },
+  {
+    "name": "agentSessions",
+    "sha256": "1fe40884f6775ed1c7ebcdd55c7b4e6e565700621c2436019752dd0b526a0e9b"
+  },
+  {
+    "name": "agentSessionCreateOnIssue",
+    "sha256": "17db31cd0c35a4631c02e417507568fb85881200521f0b28560d639aa3e0dd0a"
+  },
+  {
+    "name": "agentSessionCreateOnComment",
+    "sha256": "c5627f1f17c43bba15f31ca93c690d808da1d31753c9ff7b2aef086ed62d2075"
+  },
+  {
+    "name": "updateAgentSession",
+    "sha256": "6ce19aa177adf8e1f51eb839523050c8529819a284dc2bf135579fa62f942576"
+  },
+  {
+    "name": "agentSession_activities",
+    "sha256": "ba37d530672261c287825244517af722a65a2a348f6c2779b22e06a04b915028"
+  },
+  {
+    "name": "agentActivity",
+    "sha256": "ff8e8e4fef4ccdfd783c7b7ffb911221adccee11f0b63c0f62eeee403bd56094"
+  },
+  {
+    "name": "agentActivities",
+    "sha256": "778f3e48b4f2f57295d59d17c0c9209b3f4fca487fe5477d5c6f9be3e2baf2b9"
+  },
+  {
+    "name": "createAgentActivity",
+    "sha256": "c05b3155ec18c66ebc45e2dec13c143471dc3e98d8b9401d24f22147c305aa9b"
   }
 ]
