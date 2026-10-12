@@ -1,0 +1,26 @@
+name: CI
+on:
+  push:
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install locked dependencies
+        run: |
+          run_home=$(mktemp -d)
+          export HOME="$run_home" KYOTOAGENT_ROOT="$run_home/.kyotoagent"
+          test "$(realpath -m "$HOME")" = "$run_home"
+          test "$(realpath -m "$KYOTOAGENT_ROOT")" = "$run_home/.kyotoagent"
+          bun install --frozen-lockfile
+      - name: Check formatting, lint, types, and contracts
+        run: |
+          run_home=$(mktemp -d)
+          export HOME="$run_home" KYOTOAGENT_ROOT="$run_home/.kyotoagent"
+          test "$(realpath -m "$HOME")" = "$run_home"
+          test "$(realpath -m "$KYOTOAGENT_ROOT")" = "$run_home/.kyotoagent"
+          bun run check

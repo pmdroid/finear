@@ -1,0 +1,26 @@
+{
+  "name": "finear",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun src/main.ts",
+    "format": "bun --bun run oxfmt --write .",
+    "format:check": "bun --bun run oxfmt --check .",
+    "lint": "bun --bun run oxlint --deny-warnings .",
+    "typecheck": "bun --bun run tsc --noEmit",
+    "test": "bun test",
+    "check": "bun run format:check && bun run lint && bun run typecheck && bun run test"
+  },
+  "dependencies": {
+    "@linear/sdk": "97.1.0",
+    "graphql": "16.11.0"
+  },
+  "devDependencies": {
+    "@types/bun": "1.3.11",
+    "oxfmt": "0.72.0",
+    "oxlint": "1.87.0",
+    "typescript": "5.9.3"
+  },
+  "packageManager": "bun@1.4.2"
+}
