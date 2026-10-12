@@ -660,6 +660,8 @@ export class Workspace {
         tx,
       );
       const type = input.type === undefined ? row.type : text(input.type, "type");
+      if (!["blocks", "duplicate", "related", "similar"].includes(type))
+        invalid("Invalid relation type");
       tx.run(
         "UPDATE issue_relations SET issue_id = ?, related_issue_id = ?, type = ?, updated_at = ? WHERE id = ?",
         issue.id,

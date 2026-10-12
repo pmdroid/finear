@@ -75,6 +75,44 @@ test("SDK relation mutations preserve outward and inverse dependencies with real
   expect((await client.issueRelations()).nodes).toEqual([]);
 });
 
+test("relation updates reject unsupported types without partial writes", async () => {
+  const { application, client, issue } = await setup();
+  const source = await issue("Source");
+  const target = await issue("Target");
+  const other = await issue("Other");
+  const relation = (await (
+    await client.createIssueRelation({
+      issueId: source.id,
+      relatedIssueId: target.id,
+      type: IssueRelationType.Blocks,
+    })
+  ).issueRelation)!;
+  const snapshot = () => ({
+    relations: application.runtime.database
+      .query("SELECT * FROM issue_relations ORDER BY id")
+      .all(),
+    sync: application.runtime.database.query("SELECT * FROM sync_sequence").all(),
+    outbox: application.runtime.database.query("SELECT * FROM outbox ORDER BY sequence").all(),
+  });
+  const before = snapshot();
+  await expect(
+    client.updateIssueRelation(relation.id, {
+      issueId: other.id,
+      relatedIssueId: source.id,
+      type: "arbitraryString",
+    }),
+  ).rejects.toThrow("Invalid relation type");
+  expect(snapshot()).toEqual(before);
+  const current = await client.issueRelation(relation.id);
+  expect(current.type).toBe("blocks");
+  expect((await current.issue)?.id).toBe(source.id);
+  expect((await current.relatedIssue)?.id).toBe(target.id);
+  for (const type of Object.values(IssueRelationType)) {
+    expect((await client.updateIssueRelation(relation.id, { type })).success).toBe(true);
+    expect((await client.issueRelation(relation.id)).type).toBe(type);
+  }
+});
+
 test("relations reject foreign and inaccessible endpoints without partial writes", async () => {
   const { application, client, secondary, issue } = await setup();
   const source = await issue("Source");
