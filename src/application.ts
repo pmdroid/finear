@@ -27,6 +27,11 @@ import {
 } from "./graphql/contract";
 import { supportingResolvers } from "./workspace/supporting";
 import { Workspace } from "./workspace/entities";
+import {
+  RepositorySuggestions,
+  repositorySuggestionMigrations,
+  repositorySuggestionsResetOwner,
+} from "./workspace/repositories";
 import { workspaceEntityMigrations, workspaceEntityResetOwner } from "./workspace/entity-schema";
 import {
   workspaceEntityResolvers,
@@ -75,6 +80,7 @@ export async function createApplication(options: ApplicationOptions): Promise<Ap
       identityMigrations,
       workspaceEntityMigrations,
       agentMigrations,
+      repositorySuggestionMigrations,
       deliveryMigrations,
     ],
   });
@@ -85,6 +91,7 @@ export async function createApplication(options: ApplicationOptions): Promise<Ap
     resetOwners.push(
       identity.resetOwner,
       workspaceEntityResetOwner,
+      repositorySuggestionsResetOwner,
       agentsResetOwner,
       deliveryResetOwner,
     );
@@ -101,6 +108,7 @@ export async function createApplication(options: ApplicationOptions): Promise<Ap
     onDelegated: (...args) => agents.onDelegated(...args),
   });
   agents = createAgents(runtime, workspace, identity);
+  const repositories = new RepositorySuggestions(runtime, workspace, agents);
   const delivery = createDelivery(runtime);
   let server: ReturnType<typeof startServer>;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -169,6 +177,31 @@ export async function createApplication(options: ApplicationOptions): Promise<Ap
     }
     if (url.pathname === "/__test/reset" && request.method === "POST") {
       resetRuntime(runtime, resetOwners);
+      return Response.json({ success: true });
+    }
+    if (url.pathname === "/__test/repository-suggestions" && request.method === "POST") {
+      let input: unknown;
+      try {
+        input = await request.json();
+      } catch {
+        throw new DomainError("INVALID_INPUT", "Invalid JSON body");
+      }
+      if (!input || typeof input !== "object" || Array.isArray(input))
+        throw new DomainError("INVALID_INPUT", "Expected object");
+      const values = input as Record<string, unknown>;
+      if (Object.keys(values).some((key) => !["fixture", "issueId", "suggestions"].includes(key)))
+        throw new DomainError("INVALID_INPUT", "Unsupported repository control field");
+      const fixture = values.fixture ?? "primary";
+      if (fixture !== "primary" && fixture !== "secondary")
+        throw new DomainError("INVALID_INPUT", "Unknown fixture human");
+      if (typeof values.issueId !== "string" || !values.issueId.trim())
+        throw new DomainError("INVALID_INPUT", "Expected issueId");
+      const human = identity.authenticate(
+        new Request("http://localhost/graphql", {
+          headers: { authorization: fixtureApiKeys[fixture] },
+        }),
+      );
+      repositories.configure(human, values.issueId, values.suggestions);
       return Response.json({ success: true });
     }
     if (url.pathname.startsWith("/__test/agents/") && request.method === "POST") {
@@ -248,6 +281,17 @@ export async function createApplication(options: ApplicationOptions): Promise<Ap
     const graphql = await createGraphQLHandler(runtime, {
       authenticate: identity.authenticate,
       resolverMaps: [
+        {
+          Query: {
+            issueRepositorySuggestions: (_source, args, { principal }) =>
+              repositories.query(
+                principal,
+                String(args.issueId),
+                args.candidateRepositories,
+                args.agentSessionId as string | null | undefined,
+              ),
+          },
+        },
         supportingResolvers(),
         identityResolvers(),
         workspaceEntityResolvers(workspace),
@@ -256,6 +300,7 @@ export async function createApplication(options: ApplicationOptions): Promise<Ap
       ],
       roots: {
         query: [
+          "issueRepositorySuggestions",
           ...supportingRoots,
           ...workspaceEntityRoots,
           ...agentsRoots.query,

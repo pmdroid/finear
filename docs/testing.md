@@ -32,6 +32,7 @@ bun test tests/integration/application.test.ts
 bun test tests/integration/cli.test.ts
 bun test tests/integration/auth-races.test.ts
 bun test tests/workspace/relations.test.ts
+bun test tests/integration/agents.test.ts --test-name-pattern 'repository suggestions'
 ```
 
 | Suite | Behavior exercised |
@@ -41,6 +42,18 @@ bun test tests/workspace/relations.test.ts
 | [CLI acceptance](../tests/integration/cli.test.ts) | Actual Bun subprocess startup, readiness, SDK writes, authenticated reset command, SIGTERM, database reopen, configuration errors and both runnable examples |
 | [Authorization races](../tests/integration/auth-races.test.ts) | Real OAuth revocation/team removal while a chunked GraphQL body is held, revalidation before reads/mutations, unchanged entity/outbox counts on denial and stale-principal comparison controls |
 | [Issue relations](../tests/workspace/relations.test.ts) | SDK create/update/delete, outward and inverse connections, pagination, workspace and endpoint access, atomic rejected writes, SQLite reopen and reset |
+| [Repository suggestions](../tests/integration/agents.test.ts) | Protected issue-scoped fixtures, requested-candidate filtering, OAuth session ownership, workspace isolation, persistence and reset |
+
+Configure repository suggestions with the control token and a fixture human whose workspace contains the issue:
+
+```sh
+curl -X POST "$FINEAR_URL/__test/repository-suggestions" \
+  -H "Authorization: Bearer $FINEAR_CONTROL_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"fixture":"primary","issueId":"ISSUE_ID","suggestions":[{"hostname":"github.com","repositoryFullName":"acme/backend","confidence":0.9}]}'
+```
+
+`issueRepositorySuggestions` returns the configured suggestions that match its candidate list. New issues start with an empty list. An optional `agentSessionId` must belong to that issue and pass the caller's session access checks. Suggestions persist with SQLite and clear on reset.
 
 Module-specific suites provide narrower checks:
 

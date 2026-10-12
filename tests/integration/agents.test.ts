@@ -124,6 +124,163 @@ function events(captured: { body: string }[]) {
     .filter((event) => event.type === "AgentSessionEvent");
 }
 
+test("repository suggestions filter persisted issue fixtures and validate session access", async () => {
+  const c = await setup(true);
+  const agent = await install(c.application, c.clients[0]!);
+  const other = await install(c.application, c.clients[1]!);
+  const issue = (await (
+    await c.human.createIssue({ teamId: fixtureIds.primary.team, title: "Repository selection" })
+  ).issue)!;
+  const another = (await (
+    await c.human.createIssue({ teamId: fixtureIds.primary.team, title: "Another issue" })
+  ).issue)!;
+  await c.human.updateIssue(issue.id, { delegateId: agent.user.id });
+  await c.application.drain();
+  const session = (await agent.sdk.agentSessions()).nodes[0]!;
+  const chosen = { hostname: "github.com", repositoryFullName: "fixture/chosen" };
+  const excluded = { hostname: "github.com", repositoryFullName: "fixture/excluded" };
+  const suggestions = [
+    { ...chosen, confidence: 0.9 },
+    { ...excluded, confidence: 0.2 },
+  ];
+  const query = `query IssueRepositorySuggestions($issueId: String!, $agentSessionId: String, $candidateRepositories: [CandidateRepository!]!) {
+    issueRepositorySuggestions(issueId: $issueId, agentSessionId: $agentSessionId, candidateRepositories: $candidateRepositories) {
+      suggestions { hostname repositoryFullName confidence }
+    }
+  }`;
+  async function request(
+    application: Application,
+    token: string,
+    issueId = issue.id,
+    agentSessionId: string | null = session.id,
+  ) {
+    const response = await fetch(new URL("/graphql", application.url), {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        query,
+        variables: { issueId, agentSessionId, candidateRepositories: [chosen] },
+      }),
+    });
+    expect(response.status).toBe(200);
+    return response.json();
+  }
+  expect((await request(c.application, agent.token)).data).toEqual({
+    issueRepositorySuggestions: { suggestions: [] },
+  });
+  const configure = (body: unknown, token = "agent-control") =>
+    fetch(new URL("/__test/repository-suggestions", c.application.url), {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  expect((await configure({ issueId: issue.id, suggestions }, "wrong-control")).status).toBe(401);
+  expect((await configure({ issueId: issue.id, suggestions })).status).toBe(200);
+  expect((await request(c.application, agent.token)).data).toEqual({
+    issueRepositorySuggestions: { suggestions: [suggestions[0]] },
+  });
+  expect((await request(c.application, agent.token, another.id, null)).data).toEqual({
+    issueRepositorySuggestions: { suggestions: [] },
+  });
+  expect((await request(c.application, agent.token, another.id)).errors).toBeDefined();
+  expect((await request(c.application, other.token)).errors).toBeDefined();
+  const secondary = new LinearClient({
+    apiUrl: new URL("/graphql", c.application.url).href,
+    apiKey: fixtureApiKeys.secondary,
+  });
+  const foreign = (await (
+    await secondary.createIssue({
+      teamId: fixtureIds.secondary.team,
+      title: "Foreign repository selection",
+    })
+  ).issue)!;
+  expect((await request(c.application, agent.token, foreign.id, null)).errors).toBeDefined();
+  expect((await request(c.application, agent.token, issue.id, "")).errors).toBeDefined();
+  expect((await configure({ fixture: "secondary", issueId: issue.id, suggestions })).status).toBe(
+    404,
+  );
+  expect(
+    (await configure({ issueId: issue.id, suggestions: [{ ...chosen, confidence: 2 }] })).status,
+  ).toBe(400);
+  expect(
+    (await request(c.application, agent.token)).data.issueRepositorySuggestions.suggestions,
+  ).toEqual([suggestions[0]]);
+  await c.application.close();
+  const reopened = await createApplication(c.options);
+  applications.push(reopened);
+  expect(
+    (await request(reopened, agent.token)).data.issueRepositorySuggestions.suggestions,
+  ).toEqual([suggestions[0]]);
+  await reopened.reset();
+  const human = new LinearClient({
+    apiUrl: new URL("/graphql", reopened.url).href,
+    apiKey: fixtureApiKeys.primary,
+  });
+  const resetIssue = (await (
+    await human.createIssue({ teamId: fixtureIds.primary.team, title: "After reset" })
+  ).issue)!;
+  const response = await fetch(new URL("/graphql", reopened.url), {
+    method: "POST",
+    headers: { authorization: fixtureApiKeys.primary, "content-type": "application/json" },
+    body: JSON.stringify({
+      query,
+      variables: { issueId: resetIssue.id, candidateRepositories: [chosen] },
+    }),
+  });
+  expect((await response.json()).data.issueRepositorySuggestions.suggestions).toEqual([]);
+});
+
+test("OAuth app and fixture users resolve their own organization for installation checks", async () => {
+  const c = await setup();
+  const agent = await install(c.application, c.clients[0]!);
+  for (const subject of [
+    { token: agent.token, user: agent.user.id, fixture: fixtureIds.primary, app: true },
+    {
+      token: fixtureApiKeys.primary,
+      user: fixtureIds.primary.user,
+      fixture: fixtureIds.primary,
+      app: false,
+    },
+    {
+      token: fixtureApiKeys.secondary,
+      user: fixtureIds.secondary.user,
+      fixture: fixtureIds.secondary,
+      app: false,
+    },
+  ]) {
+    const response = await fetch(new URL("/graphql", c.application.url), {
+      method: "POST",
+      headers: {
+        authorization: subject.app ? `Bearer ${subject.token}` : subject.token,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        query: "query PawsBrowserInstallation { viewer { id app organization { id name } } }",
+      }),
+    });
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.errors).toBeUndefined();
+    expect(body.data.viewer).toEqual({
+      id: subject.user,
+      app: subject.app,
+      organization: {
+        id: subject.fixture.organization,
+        name: (
+          await new LinearClient({
+            apiUrl: new URL("/graphql", c.application.url).href,
+            ...(subject.app ? { accessToken: subject.token } : { apiKey: subject.token }),
+          }).organization
+        ).name,
+      },
+    });
+  }
+  expect((await agent.user.organization)?.id).toBe(fixtureIds.primary.organization);
+  const member = await agent.sdk.user(fixtureIds.primary.user);
+  expect((await member.organization)?.id).toBe(fixtureIds.primary.organization);
+  await expect(agent.sdk.user(fixtureIds.secondary.user)).rejects.toThrow("Record not found");
+});
+
 test("integrated OAuth delegation and signed agent interaction complete and persist with threaded comments", async () => {
   const c = await setup(true);
   const agent = await install(c.application, c.clients[0]!);

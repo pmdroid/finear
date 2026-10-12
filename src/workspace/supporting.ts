@@ -251,6 +251,16 @@ export function supportingResolvers(): ResolverMap {
       },
     },
     User: {
+      organization: (source, _args, { runtime, principal }) => {
+        const user = rows(runtime, "users", principal).find((row) => row.id === (source as Row).id);
+        if (!user) throw new DomainError("NOT_FOUND", "User not found");
+        return project(
+          rows(runtime, "organizations", principal)[0]!,
+          "organizations",
+          runtime,
+          principal,
+        );
+      },
       teams: (source, args, { runtime, principal }) => {
         const memberships = runtime.database
           .query<{ team_id: string }>(
