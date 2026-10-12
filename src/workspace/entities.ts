@@ -10,6 +10,8 @@ import type {
   Entity,
   EntityRow,
   IssueInput,
+  IssueRelationInput,
+  IssueRelationRow,
   IssueRow,
   LabelInput,
   ListArgs,
@@ -562,6 +564,120 @@ export class Workspace {
     requireScope(principal, "read");
     const db = tx ?? this.runtime.database;
     return this.projectProjection(this.projectRow(principal, id, db), db);
+  }
+
+  private relationRow(principal: Principal, id: string, db: ReadDatabase): IssueRelationRow {
+    const row = db
+      .query<IssueRelationRow>("SELECT * FROM issue_relations WHERE organization_id = ? AND id = ?")
+      .get(principal.organizationId, id);
+    if (!row) throw new DomainError("NOT_FOUND", "Relation not found");
+    this.issueRow(principal, row.issue_id, db);
+    this.issueRow(principal, row.related_issue_id, db);
+    return row;
+  }
+
+  private relationProjection(row: IssueRelationRow): Entity {
+    return {
+      id: row.id,
+      type: row.type,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      archivedAt: null,
+      issue: { id: row.issue_id },
+      relatedIssue: { id: row.related_issue_id },
+    };
+  }
+
+  requireIssueRelation(principal: Principal, id: string): Entity {
+    requireScope(principal, "read");
+    return this.relationProjection(this.relationRow(principal, id, this.runtime.database));
+  }
+
+  listIssueRelations(principal: Principal, args: ListArgs = {}, issueId?: string, inverse = false) {
+    requireScope(principal, "read");
+    const db = this.runtime.database;
+    const issue = issueId ? this.issueRow(principal, issueId, db) : undefined;
+    const rows = db
+      .query<IssueRelationRow>("SELECT * FROM issue_relations WHERE organization_id = ?")
+      .all(principal.organizationId)
+      .filter((row) => !issue || (inverse ? row.related_issue_id : row.issue_id) === issue.id)
+      .filter((row) =>
+        db
+          .query<IssueRow>("SELECT * FROM issues WHERE id IN (?, ?)")
+          .all(row.issue_id, row.related_issue_id)
+          .every(
+            (endpoint) =>
+              principal.teamIds.includes(endpoint.team_id) &&
+              (!endpoint.project_id || this.projectVisible(principal, endpoint.project_id, db)),
+          ),
+      );
+    return this.connection(
+      rows.map((row) => this.relationProjection(row)),
+      args,
+      `relations:${principal.organizationId}:${issue?.id ?? "all"}:${inverse}`,
+    );
+  }
+
+  createIssueRelation(principal: Principal, input: IssueRelationInput, createdAt?: number) {
+    keys(input, ["id", "issueId", "relatedIssueId", "type"]);
+    return this.write(principal, "write", (tx) => {
+      const issue = this.issueRow(principal, text(input.issueId, "issueId"), tx);
+      const related = this.issueRow(principal, text(input.relatedIssueId, "relatedIssueId"), tx);
+      const type = text(input.type, "type");
+      if (!["blocks", "duplicate", "related", "similar"].includes(type))
+        invalid("Invalid relation type");
+      const id = input.id === undefined ? crypto.randomUUID() : uuid(input.id);
+      if (tx.query("SELECT id FROM issue_relations WHERE id = ?").get(id))
+        throw new DomainError("CONFLICT", "Relation ID already exists");
+      tx.run(
+        "INSERT INTO issue_relations(id, organization_id, issue_id, related_issue_id, type, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?)",
+        id,
+        principal.organizationId,
+        issue.id,
+        related.id,
+        type,
+        createdAt ?? tx.now,
+        tx.now,
+      );
+      return this.result(tx, this.relationProjection(this.relationRow(principal, id, tx)));
+    });
+  }
+
+  updateIssueRelation(principal: Principal, id: string, input: IssueRelationInput) {
+    keys(input, ["issueId", "relatedIssueId", "type"]);
+    return this.write(principal, "write", (tx) => {
+      const row = this.relationRow(principal, id, tx);
+      const issue = this.issueRow(
+        principal,
+        input.issueId === undefined ? row.issue_id : text(input.issueId, "issueId"),
+        tx,
+      );
+      const related = this.issueRow(
+        principal,
+        input.relatedIssueId === undefined
+          ? row.related_issue_id
+          : text(input.relatedIssueId, "relatedIssueId"),
+        tx,
+      );
+      const type = input.type === undefined ? row.type : text(input.type, "type");
+      tx.run(
+        "UPDATE issue_relations SET issue_id = ?, related_issue_id = ?, type = ?, updated_at = ? WHERE id = ?",
+        issue.id,
+        related.id,
+        type,
+        tx.now,
+        row.id,
+      );
+      return this.result(tx, this.relationProjection(this.relationRow(principal, row.id, tx)));
+    });
+  }
+
+  deleteIssueRelation(principal: Principal, id: string) {
+    return this.write(principal, "write", (tx) => {
+      const row = this.relationRow(principal, id, tx);
+      tx.run("DELETE FROM issue_relations WHERE id = ?", row.id);
+      return { success: true, lastSyncId: tx.syncId, entityId: row.id };
+    });
   }
 
   private connection(entities: Entity[], args: ListArgs, namespace: string) {

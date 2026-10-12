@@ -127,11 +127,30 @@ export const workspaceEntityMigrations: MigrationSet = {
     CREATE INDEX workspace_comment_issue ON comments(organization_id, issue_id, created_at, id);
   `,
     },
+    {
+      version: 2,
+      sql: `
+    CREATE TABLE issue_relations (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL,
+      issue_id TEXT NOT NULL,
+      related_issue_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY(organization_id, issue_id) REFERENCES issues(organization_id, id) ON DELETE CASCADE,
+      FOREIGN KEY(organization_id, related_issue_id) REFERENCES issues(organization_id, id) ON DELETE CASCADE
+    );
+    CREATE INDEX workspace_relation_issue ON issue_relations(organization_id, issue_id);
+    CREATE INDEX workspace_relation_inverse ON issue_relations(organization_id, related_issue_id);
+  `,
+    },
   ],
 };
 
 export const workspaceEntityResetOwner: ResetOwner = {
   clear(tx) {
+    tx.run("DELETE FROM issue_relations");
     tx.run("DELETE FROM comments WHERE parent_id IS NOT NULL");
     tx.run("DELETE FROM comments");
     tx.run("UPDATE issues SET parent_id = NULL");

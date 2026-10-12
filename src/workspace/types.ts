@@ -100,6 +100,21 @@ export type CommentInput = {
   parentId?: string | null;
   body: string;
 };
+export type IssueRelationInput = {
+  id?: string;
+  issueId?: string;
+  relatedIssueId?: string;
+  type?: string;
+};
+export type IssueRelationRow = {
+  id: string;
+  organization_id: string;
+  issue_id: string;
+  related_issue_id: string;
+  type: string;
+  created_at: number;
+  updated_at: number;
+};
 export type LabelInput = {
   id?: string;
   name: string;
