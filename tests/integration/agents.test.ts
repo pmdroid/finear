@@ -124,6 +124,57 @@ function events(captured: { body: string }[]) {
     .filter((event) => event.type === "AgentSessionEvent");
 }
 
+test("OAuth app and fixture users resolve their own organization for installation checks", async () => {
+  const c = await setup();
+  const agent = await install(c.application, c.clients[0]!);
+  for (const subject of [
+    { token: agent.token, user: agent.user.id, fixture: fixtureIds.primary, app: true },
+    {
+      token: fixtureApiKeys.primary,
+      user: fixtureIds.primary.user,
+      fixture: fixtureIds.primary,
+      app: false,
+    },
+    {
+      token: fixtureApiKeys.secondary,
+      user: fixtureIds.secondary.user,
+      fixture: fixtureIds.secondary,
+      app: false,
+    },
+  ]) {
+    const response = await fetch(new URL("/graphql", c.application.url), {
+      method: "POST",
+      headers: {
+        authorization: subject.app ? `Bearer ${subject.token}` : subject.token,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        query: "query PawsBrowserInstallation { viewer { id app organization { id name } } }",
+      }),
+    });
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.errors).toBeUndefined();
+    expect(body.data.viewer).toEqual({
+      id: subject.user,
+      app: subject.app,
+      organization: {
+        id: subject.fixture.organization,
+        name: (
+          await new LinearClient({
+            apiUrl: new URL("/graphql", c.application.url).href,
+            ...(subject.app ? { accessToken: subject.token } : { apiKey: subject.token }),
+          }).organization
+        ).name,
+      },
+    });
+  }
+  expect((await agent.user.organization)?.id).toBe(fixtureIds.primary.organization);
+  const member = await agent.sdk.user(fixtureIds.primary.user);
+  expect((await member.organization)?.id).toBe(fixtureIds.primary.organization);
+  await expect(agent.sdk.user(fixtureIds.secondary.user)).rejects.toThrow("Record not found");
+});
+
 test("integrated OAuth delegation and signed agent interaction complete and persist with threaded comments", async () => {
   const c = await setup(true);
   const agent = await install(c.application, c.clients[0]!);
