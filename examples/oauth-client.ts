@@ -1,6 +1,38 @@
 import { LinearClient } from "@linear/sdk";
 
-const origin = process.env.FINEAR_URL ?? "http://127.0.0.1:4444";
+let origin: URL;
+try {
+  try {
+    origin = new URL(process.env.FINEAR_URL ?? "http://127.0.0.1:4444");
+  } catch {
+    throw new Error("FINEAR_URL must be an absolute HTTP or HTTPS origin without credentials");
+  }
+  if (
+    !["http:", "https:"].includes(origin.protocol) ||
+    origin.username ||
+    origin.password ||
+    origin.search ||
+    origin.hash ||
+    origin.pathname !== "/"
+  ) {
+    throw new Error("FINEAR_URL must be an HTTP or HTTPS origin without credentials");
+  }
+  try {
+    const response = await fetch(new URL("/health", origin), {
+      redirect: "error",
+      signal: AbortSignal.timeout(3000),
+    });
+    await response.body?.cancel();
+    if (!response.ok) throw new Error();
+  } catch {
+    throw new Error(
+      "Finear is not ready. Start `bun run start` in a separate terminal, wait for its listening URL, then run the OAuth example again. If using another port, set FINEAR_URL to the server origin.",
+    );
+  }
+} catch (error) {
+  console.error(error instanceof Error ? error.message : "OAuth preflight failed");
+  process.exit(1);
+}
 const redirectUri = "http://127.0.0.1:5555/callback";
 const clientId = "30000000-0000-4000-8000-000000000001";
 const clientSecret = "finear-fixture-oauth-secret";
@@ -65,7 +97,9 @@ authorize.search = new URLSearchParams({
   actor: "app",
   state,
 }).toString();
-console.log(`Open this URL and approve the fixture workspace:\n${authorize}`);
+console.log(
+  `Waiting for you to open this URL in a browser and approve the fixture workspace:\n${authorize}`,
+);
 try {
   console.log(await completed);
 } catch (error) {

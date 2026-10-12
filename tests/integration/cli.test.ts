@@ -208,6 +208,100 @@ test("documented SDK example runs against the CLI entry point", async () => {
   await stop(app.child);
 });
 
+test("OAuth example fails promptly without a server and leaves the callback port free", async () => {
+  const unused = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    fetch: () => new Response("unused"),
+  });
+  const origin = unused.url.origin;
+  await unused.stop(true);
+  const output = await Promise.race([
+    result("examples/oauth-client.ts", { FINEAR_URL: origin }),
+    Bun.sleep(2000).then(() => {
+      throw new Error("OAuth example did not fail promptly without Finear");
+    }),
+  ]);
+  expect(output.exit).toBe(1);
+  expect(output.stdout).toBe("");
+  expect(output.stderr).toContain("bun run start");
+  expect(output.stderr).toContain("separate terminal");
+  expect(output.stderr).toContain("OAuth example again");
+  expect(output.stderr).not.toContain("finear-fixture-oauth-secret");
+  const callback = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 5555,
+    fetch: () => new Response("available"),
+  });
+  await callback.stop(true);
+});
+
+test("OAuth example rejects unsafe origins without exposing configuration", async () => {
+  for (const FINEAR_URL of [
+    "not-a-url",
+    "file:///tmp/fixture-secret",
+    "ftp://127.0.0.1",
+    "http://fixture-user@127.0.0.1:4444",
+    "http://127.0.0.1:4444/fixture-secret",
+    "http://127.0.0.1:4444?token=fixture-secret",
+    "http://127.0.0.1:4444#fixture-secret",
+  ]) {
+    const output = await result("examples/oauth-client.ts", { FINEAR_URL });
+    expect(output.exit).toBe(1);
+    expect(output.stdout).toBe("");
+    expect(output.stderr).toContain("FINEAR_URL must be");
+    expect(output.stderr).not.toContain("fixture-secret");
+    expect(output.stderr).not.toContain("fixture-user");
+  }
+});
+
+test("OAuth preflight rejects unhealthy, redirected and stalled health before opening the callback", async () => {
+  const callback = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 5555,
+    fetch: () => new Response("reserved during preflight"),
+  });
+  try {
+    for (const mode of ["unhealthy", "redirected", "stalled"]) {
+      let release!: (response: Response) => void;
+      const stalled = new Promise<Response>((resolve) => {
+        release = resolve;
+      });
+      const requests: string[] = [];
+      const health = Bun.serve({
+        hostname: "127.0.0.1",
+        port: 0,
+        fetch(request) {
+          requests.push(`${request.method} ${new URL(request.url).pathname}`);
+          if (mode === "stalled") return stalled;
+          if (mode === "redirected") return Response.redirect("http://fixture-user@127.0.0.1:1");
+          return new Response("fixture-secret", { status: 503 });
+        },
+      });
+      try {
+        const output = await Promise.race([
+          result("examples/oauth-client.ts", { FINEAR_URL: health.url.origin }),
+          Bun.sleep(5000).then(() => {
+            throw new Error("OAuth health preflight was not bounded");
+          }),
+        ]);
+        expect(output.exit).toBe(1);
+        expect(output.stdout).toBe("");
+        expect(output.stderr).toContain("Finear is not ready");
+        expect(output.stderr).toContain("bun run start");
+        expect(output.stderr).not.toContain("fixture-secret");
+        expect(output.stderr).not.toContain("fixture-user");
+        expect(requests).toEqual(["GET /health"]);
+      } finally {
+        release(new Response("released"));
+        await health.stop(true);
+      }
+    }
+  } finally {
+    await callback.stop(true);
+  }
+}, 10000);
+
 test("documented OAuth callback example verifies state and exchanges local form credentials", async () => {
   const app = await start();
   const callback = spawn("examples/oauth-client.ts", environment({ FINEAR_URL: app.url.origin }));
@@ -228,6 +322,7 @@ test("documented OAuth callback example verifies state and exchanges local form 
       throw new Error("OAuth callback example timeout");
     }),
   ]);
+  expect(output).toContain("Waiting for you to open this URL in a browser and approve");
   const callbackUrl = new URL(authorize.searchParams.get("redirect_uri")!);
   const invalid = new URL(callbackUrl);
   invalid.search = new URLSearchParams({ state: "wrong-state", code: "invalid" }).toString();

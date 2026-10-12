@@ -8,6 +8,18 @@ Create the runtime with `migrations: [identityMigrations]`, then call `createIde
 
 Pass `options.clients` to register application-specific callbacks, allowed scopes, and optional `{ url, secret, resourceTypes }` webhook configuration. `registerClient(tx, registration)` also composes with a caller transaction. Callback matching is exact, including query strings, trailing slashes and ports.
 
+## Run the callback example
+
+After installing dependencies with `bun install --frozen-lockfile`, start `bun run start` in one terminal and leave it running. Wait for its listening URL (by default `http://127.0.0.1:4444/`). In a separate terminal, run:
+
+```sh
+bun run examples/oauth-client.ts
+```
+
+Keep port 5555 available for the registered loopback callback. For another server port, set `FINEAR_URL` to the server's HTTP or HTTPS origin without credentials, a path, query or fragment. The example first checks `/health` with a three-second deadline. If the server is unavailable, it exits before opening the callback; start Finear and run the example again.
+
+The example waits for you to open its printed authorization URL in a browser and approve consent. After approval it exchanges the code, prints the SDK app viewer without tokens, and closes the callback. Finish consent within five minutes.
+
 ## HTTP flow
 
 Visit `/oauth/authorize` with `client_id`, `redirect_uri`, `response_type=code`, comma-separated `scope`, optional `actor=user|app`, `state`, `code_challenge`, and `code_challenge_method=plain|S256`. `read` is included automatically. The local HTML consent form explicitly selects a fixture human/workspace and team checkboxes. Submit its opaque `consent`, `decision=allow|deny`, `user_id`, `workspace_id`, and repeated `team_id` values to `POST /oauth/authorize` as form data. Approval redirects to the registered callback with `code` and the original `state`; denial returns `error=access_denied` and state. Verify state in the callback client.
