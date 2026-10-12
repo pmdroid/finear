@@ -4,7 +4,15 @@ import { Workspace } from "./entities";
 import { supportingResolvers } from "./supporting";
 import { paginate } from "./pagination";
 import { filterEntities } from "./filters";
-import type { CommentInput, Entity, IssueInput, LabelInput, ListArgs, ProjectInput } from "./types";
+import type {
+  CommentInput,
+  Entity,
+  IssueInput,
+  IssueRelationInput,
+  LabelInput,
+  ListArgs,
+  ProjectInput,
+} from "./types";
 
 export function workspaceEntityResolvers(workspace: Workspace): ResolverMap {
   const supporting = supportingResolvers();
@@ -45,6 +53,10 @@ export function workspaceEntityResolvers(workspace: Workspace): ResolverMap {
     };
   return {
     Query: {
+      issueRelation: (_source, args, { principal }) =>
+        workspace.requireIssueRelation(principal, String(args.id)),
+      issueRelations: (_source, args, { principal }) =>
+        workspace.listIssueRelations(principal, args),
       issue: (_source, args, { principal }) => workspace.requireIssue(principal, String(args.id)),
       issues: (_source, args, { principal }) => workspace.listIssues(principal, args),
       project: (_source, args, { principal }) =>
@@ -58,6 +70,26 @@ export function workspaceEntityResolvers(workspace: Workspace): ResolverMap {
       issueLabels: (_source, args, { principal }) => workspace.listLabels(principal, args),
     },
     Mutation: {
+      issueRelationCreate: (_source, args, { principal }) =>
+        payload(
+          workspace.createIssueRelation(
+            principal,
+            input<IssueRelationInput>(args.input),
+            args.overrideCreatedAt as number | undefined,
+          ),
+          "issueRelation",
+        ),
+      issueRelationUpdate: (_source, args, { principal }) =>
+        payload(
+          workspace.updateIssueRelation(
+            principal,
+            String(args.id),
+            input<IssueRelationInput>(args.input),
+          ),
+          "issueRelation",
+        ),
+      issueRelationDelete: (_source, args, { principal }) =>
+        workspace.deleteIssueRelation(principal, String(args.id)),
       issueCreate: (_source, args, { principal }) =>
         payload(workspace.createIssue(principal, input<IssueInput>(args.input)), "issue"),
       issueUpdate: (_source, args, { principal }) =>
@@ -100,6 +132,10 @@ export function workspaceEntityResolvers(workspace: Workspace): ResolverMap {
         payload(workspace.createLabel(principal, input<LabelInput>(args.input)), "issueLabel"),
     },
     Issue: {
+      relations: (source, args, { principal }) =>
+        workspace.listIssueRelations(principal, args, entityId(source)),
+      inverseRelations: (source, args, { principal }) =>
+        workspace.listIssueRelations(principal, args, entityId(source), true),
       team: relationship("team", team),
       state: relationship("state", (context, id) => directory("workflowState", context, id)),
       parent: relationship("parent", issue),
@@ -113,6 +149,10 @@ export function workspaceEntityResolvers(workspace: Workspace): ResolverMap {
         workspace.listComments(principal, args, entityId(source)),
       labels: (source, args, { principal }) =>
         workspace.listLabels(principal, args, entityId(source)),
+    },
+    IssueRelation: {
+      issue: relationship("issue", issue),
+      relatedIssue: relationship("relatedIssue", issue),
     },
     Project: {
       status: relationship("status", (context, id) => directory("projectStatus", context, id)),
@@ -149,6 +189,8 @@ export function workspaceEntityResolvers(workspace: Workspace): ResolverMap {
 }
 
 export const workspaceEntityRoots = [
+  "issueRelation",
+  "issueRelations",
   "issue",
   "issues",
   "project",
@@ -159,6 +201,13 @@ export const workspaceEntityRoots = [
   "issueLabels",
 ] as const;
 export const workspaceEntityOperations = [
+  "issueRelation",
+  "issueRelations",
+  "createIssueRelation",
+  "updateIssueRelation",
+  "deleteIssueRelation",
+  "issue_relations",
+  "issue_inverseRelations",
   "issue",
   "issues",
   "createIssue",

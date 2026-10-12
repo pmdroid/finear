@@ -31,6 +31,7 @@ bun test tests/integration/agents.test.ts
 bun test tests/integration/application.test.ts
 bun test tests/integration/cli.test.ts
 bun test tests/integration/auth-races.test.ts
+bun test tests/workspace/relations.test.ts
 bun test tests/integration/agents.test.ts --test-name-pattern 'repository suggestions'
 ```
 
@@ -40,6 +41,7 @@ bun test tests/integration/agents.test.ts --test-name-pattern 'repository sugges
 | [Application integration](../tests/integration/application.test.ts) | Native Issue/Project/Comment webhooks, OAuth app revocation, automatic delivery, chronological retries, receiver SDK callbacks, control isolation and shutdown/reset synchronization |
 | [CLI acceptance](../tests/integration/cli.test.ts) | Actual Bun subprocess startup, readiness, SDK writes, authenticated reset command, SIGTERM, database reopen, configuration errors and both runnable examples |
 | [Authorization races](../tests/integration/auth-races.test.ts) | Real OAuth revocation/team removal while a chunked GraphQL body is held, revalidation before reads/mutations, unchanged entity/outbox counts on denial and stale-principal comparison controls |
+| [Issue relations](../tests/workspace/relations.test.ts) | SDK create/update/delete, outward and inverse connections, pagination, workspace and endpoint access, atomic rejected writes, SQLite reopen and reset |
 | [Repository suggestions](../tests/integration/agents.test.ts) | Protected issue-scoped fixtures, requested-candidate filtering, OAuth session ownership, workspace isolation, persistence and reset |
 
 Configure repository suggestions with the control token and a fixture human whose workspace contains the issue:
