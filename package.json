@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "bun src/main.ts",
+    "reset": "bun src/reset.ts",
     "format": "bun --bun run oxfmt --write .",
     "format:check": "bun --bun run oxfmt --check .",
     "lint": "bun --bun run oxlint --deny-warnings .",
