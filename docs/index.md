@@ -4,6 +4,7 @@ Finear runs a local Linear-compatible HTTP server using Bun, SQLite, GraphQL.js 
 
 ## Use and test
 
+- [Agent guide](agents.md): runnable signed-webhook agent, OAuth configuration, SDK activities, and human prompts.
 - [Testing](testing.md): full and focused commands, end-to-end acceptance, deterministic fixtures/time and run-owned resources.
 - [OAuth identity usage](identity-usage.md): registered clients, exact callbacks, consent, PKCE, refresh, revocation, scopes and app webhook provisioning.
 - [SDK example](../examples/sdk.ts): create a project and parent/child issues through the unchanged SDK.

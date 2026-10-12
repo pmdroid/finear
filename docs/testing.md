@@ -28,6 +28,7 @@ Each suite below starts its own listeners and creates its own persistence. Run t
 
 ```sh
 bun test tests/integration/agents.test.ts
+bun test tests/integration/agent-example.test.ts
 bun test tests/integration/application.test.ts
 bun test tests/integration/cli.test.ts
 bun test tests/integration/auth-races.test.ts

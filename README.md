@@ -82,13 +82,21 @@ OAuth URLs must be configured separately from the SDK's `apiUrl`:
 
 The confidential fixture client is `30000000-0000-4000-8000-000000000001`, secret `finear-fixture-oauth-secret`, registered callback exactly `http://127.0.0.1:5555/callback`. The public PKCE fixture ends in `0002`. Local consent explicitly selects the human/workspace and accessible teams. `actor=app` creates a distinct app viewer; `actor=user` acts as the fixture human.
 
-Run the callback example, open its printed authorization URL in a browser, and approve consent:
+Start Finear in one terminal and leave it running:
 
 ```sh
-bun examples/oauth-client.ts
+bun run start
 ```
 
-This example listens on the registered callback, verifies returned state before consuming the code, exchanges form-encoded credentials at the local token URL, and calls SDK viewer using the issued access token. It does not print token material. Port 5555 must be available. The callback closes on completion or after five minutes.
+Wait for `Finear listening at http://127.0.0.1:4444/`, then run the callback example in a separate terminal with port 5555 available:
+
+```sh
+bun run examples/oauth-client.ts
+```
+
+For a server on another port, set `FINEAR_URL` to its HTTP or HTTPS origin, without credentials, a path, query or fragment. The example checks `/health` with a three-second deadline before opening the callback or printing an authorization URL. If Finear is unavailable, start it and run the example again.
+
+When the example says it is waiting, manually open its printed URL in a browser and approve the fixture workspace consent. It verifies returned state before consuming the code, exchanges form-encoded credentials at the local token URL, and calls SDK viewer using the issued access token. It prints the viewer, not token material, then closes the callback. The callback also closes after five minutes.
 
 ## Webhooks and control
 
@@ -114,6 +122,14 @@ CONTROL_TOKEN=local-control-token bun run reset
 For another port, set `FINEAR_URL=http://127.0.0.1:PORT`. Reset waits for in-flight delivery, clears application entities and credentials/delivery history, resets virtual time and sequences, and reseeds the fixture directory and configured OAuth clients. Existing OAuth tokens become invalid. The reset command calls the authenticated live control endpoint; it does not delete database files.
 
 ## Agent sessions
+
+Run a complete event-driven agent example with its own temporary Finear server and signed webhook receiver:
+
+```sh
+bun examples/agent.ts
+```
+
+No separate server is needed for this demo. It installs a fixture OAuth app, delegates an issue, exchanges activities and a human prompt, verifies signatures and duplicate deliveries, and cleans up its listeners and database. See the [agent guide](docs/agents.md) for the code walkthrough and configuration.
 
 OAuth clients configured with `webhook.agentSessionEvents: true` receive signed session-created and prompted events only for their owning app. Include `app:assignable` and `app:mentionable` in installation scopes for delegation and mentions. Human SDK issue updates set `delegateId` to the app viewer ID while preserving the human assignee; delegation atomically creates a pending session. Repeating the delegate or editing the issue title does not duplicate that session.
 
