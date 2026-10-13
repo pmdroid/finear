@@ -2,6 +2,14 @@
 
 Finear is a local Linear-compatible server for integration tests. It runs on Bun with SQLite persistence, real GraphQL execution, the unchanged `@linear/sdk@97.1.0`, local OAuth consent, and signed durable webhooks.
 
+## Disclaimer
+
+Finear is intended for local development and integration testing. It is an independent project and is not affiliated with, endorsed by, or sponsored by Linear. Linear and its trademarks belong to their respective owners.
+
+## License
+
+Finear's original code is licensed under the [MIT License](LICENSE). Third-party dependencies and vendored Linear schema and operation documents retain their respective licenses.
+
 ## Features
 
 - Issues, projects, parent/sub-issues, labels and threaded comments with workspace/team access checks.
